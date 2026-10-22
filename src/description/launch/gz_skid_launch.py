@@ -14,7 +14,7 @@ def generate_launch_description():
     urdf_path = os.path.join(bringup_dir, 'urdf', urdf_file_name)
     
     tb3_gazebo_dir = get_package_share_directory('turtlebot3_gazebo')
-    world_path = os.path.join(tb3_gazebo_dir, 'worlds', 'turtlebot3_world.world')
+    world_path = os.path.join(tb3_gazebo_dir, 'worlds', 'turtlebot3_dqn_stage4.world')
 
     install_dir = get_package_share_directory(pkg_name).split('/share')[0]
     gazebo_model_path = SetEnvironmentVariable(
@@ -56,7 +56,7 @@ def generate_launch_description():
             '-entity', 'my_robot',
             '-x', '0.0',
             '-y', '0.0',
-            '-z', '0.5'
+            '-z', '0.0'
         ],
         output='screen'
     )

@@ -17,6 +17,32 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
 
     # ─────────────────────────────────────────────
+    # URDF → robot_state_publisher
+    # Tự động publish toàn bộ TF từ file URDF:
+    #   base_footprint → base_link → camera_link → camera_optical_link
+    #                              → imu
+    #                              → lidar
+    # Thay thế toàn bộ static_transform_publisher thủ công
+    # ─────────────────────────────────────────────
+    urdf_path = os.path.join(
+        get_package_share_directory('simulation'),
+        'urdf', 'skid_robot_v3.urdf'
+    )
+    with open(urdf_path, 'r') as f:
+        robot_desc = f.read()
+
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_desc,
+            'use_sim_time': False,
+        }]
+    )
+
+    # ─────────────────────────────────────────────
     # Arguments
     # ─────────────────────────────────────────────
     arg_velodyne = DeclareLaunchArgument(
@@ -29,7 +55,7 @@ def generate_launch_description():
     )
     arg_kinematic = DeclareLaunchArgument(
         'kinematic', default_value='true',
-        description='Khởi động kinematic + odom + EKF + TF (true/false)'
+        description='Khởi động kinematic + odom + EKF (true/false)'
     )
     arg_micro_ros = DeclareLaunchArgument(
         'micro_ros', default_value='true',
@@ -83,7 +109,7 @@ def generate_launch_description():
     )
 
     # ─────────────────────────────────────────────
-    # 3. KINEMATIC + ODOM + EKF + TF
+    # 3. KINEMATIC + ODOM + EKF
     #
     #  Luồng AUTO:
     #    /cmd_vel
@@ -95,10 +121,7 @@ def generate_launch_description():
     #    ESP32 → /zlac_encoder [fb_rpm_left, fb_rpm_right]
     #      → odom node → /odom
     #      → EKF (+ /imu/data) → /odometry/filtered
-    #
-    #  zlac8015D_pub ĐÃ BỎ: ESP32 đảm nhận toàn bộ Modbus
     # ─────────────────────────────────────────────
-
     kinematic_node = Node(
         condition=IfCondition(use_kinematic),
         package='low_control',
@@ -143,33 +166,8 @@ def generate_launch_description():
         ]
     )
 
-    tf_footprint_to_base = Node(
-        condition=IfCondition(use_kinematic),
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_footprint_to_base_link',
-        arguments=['0', '0', '0.15', '0', '0', '0', 'base_footprint', 'base_link']
-    )
-    tf_base_to_velodyne = Node(
-        condition=IfCondition(use_kinematic),
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_link_to_velodyne_link',
-        arguments=['0.1', '0', '0.48', '0', '0', '0', 'base_link', 'velodyne']
-    )
-    tf_base_to_imu = Node(
-        condition=IfCondition(use_kinematic),
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_link_to_imu_link',
-        arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'imu_link']
-    )
-
     # ─────────────────────────────────────────────
     # 4. MICRO-ROS AGENT
-    #    Include từ pkg micro_ros_bringup
-    #    (src/hardware/micro_ros_bringup/launch/micro_ros.launch.py)
-    #
     #    Port : /dev/ttyUSB0 → ESP32
     #    Baud : 115200
     #    ESP32 tự lo Modbus RS485 → ZLAC8015D
@@ -192,8 +190,6 @@ def generate_launch_description():
     # ─────────────────────────────────────────────
     # 5. JOY
     #    joy_node : đọc phần cứng MC6C/PS3 → /joy
-    #    ps3      : /joy → /cmd_vel
-    #
     #    AUTO thuần  : joy:=false  (nav2 làm chủ /cmd_vel)
     #    Override tay: joy:=true   (mặc định)
     # ─────────────────────────────────────────────
@@ -208,16 +204,8 @@ def generate_launch_description():
             {'autorepeat_rate': 20.0},
         ]
     )
-	# run ps3 at new terminal
-    #ps3_node = Node(
-       # condition=IfCondition(use_joy),
-        #package='ps3',
-        #executable='ps3_teleop_node',
-        #name='ps3_teleop_node',
-        #output='screen',
-    #)
 
-# ─────────────────────────────────────────────
+    # ─────────────────────────────────────────────
     # Assemble
     # ─────────────────────────────────────────────
     return LaunchDescription([
@@ -228,27 +216,24 @@ def generate_launch_description():
         arg_micro_ros,
         arg_joy,
 
-        # 1. Velodyne & IMU (Chạy độc lập)
+        # Robot state publisher — publish TF từ URDF (thay thế static TF thủ công)
+        robot_state_publisher,
+
+        # Velodyne & IMU
         velodyne_launch,
         imu_launch,
-        
-        tf_footprint_to_base,
-        tf_base_to_velodyne,
-        tf_base_to_imu,
 
-
-        # 2. micro-ROS (Khởi chạy đầu tiên để nắm giữ cổng USB và kết nối ZLAC)
+        # micro-ROS (khởi chạy sớm để ESP32 kết nối ZLAC ổn định)
         micro_ros_launch,
-        
-        # 3. Các node khác khởi chạy trễ hơn 5s sau khi micro-ROS đã ổn định
+
+        # Các node còn lại delay 5s sau micro-ROS
         TimerAction(
-            period=5.0, 
+            period=5.0,
             actions=[
                 kinematic_node,
                 odom_node,
                 ekf_node,
                 joy_hw_node,
-                #ps3_node,
             ]
         ),
     ])

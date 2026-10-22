@@ -11,3 +11,7 @@ II. Chay simulation
 1. ros2 launch simulation gz_skid_launch.py         : Goi robot len gazebo
 2. ros2 launch nav2_bringup bringup_launch.py use_sim_time:=true map:=/home/chienle/Desktop/nav2_ws/src/turtlebot3/turtlebot3_navigation2/map/map.yaml
 3. ros2 launch nav2_bringup rviz_launch.py
+
+rviz2 -d ~/Desktop/skid_robot_v2/src/hardware/astra_orbbec_pro_cam/scripts/astrapro_pointcloud.rviz
+
+bash ~/Desktop/skid_robot_v2/src/hardware/astra_orbbec_pro_cam/scripts/start_astra_pro_camera.sh

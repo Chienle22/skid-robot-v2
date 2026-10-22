@@ -1,6 +1,8 @@
 <!-- robot.urdf - Fixed version for semantic mapping
      2D LaserScan (/scan) cho SLAM
      3D PointCloud2 (/velodyne_points) cho Semantic Mapping
+     RGB Camera (/camera/image_raw)
+     Depth Camera (/camera/depth/image_raw)
 -->
 <robot name="simulation">
 
@@ -149,9 +151,6 @@
 
   <!-- ══════════════════════════════════════════
        LIDAR LINK
-       Position (base_link frame):
-         x=0.1976, y=0.0041, z=0.4005
-       Height from ground: 0.13952 + 0.4005 = 0.540m
   ══════════════════════════════════════════ -->
   <link name="lidar">
     <inertial>
@@ -214,15 +213,6 @@
 
   <!-- ══════════════════════════════════════════
        CAMERA
-       Position (base_link frame):
-         x=0.30, y=0.00, z=0.35
-       Height from ground: 0.13952 + 0.35 = 0.490m
-
-       Offset camera → lidar (base_link frame):
-         dx = 0.1976 - 0.3000 = -0.1024m
-         dy = 0.0041 - 0.0000 =  0.0041m
-         dz = 0.4005 - 0.3500 =  0.0505m
-       → lidar nằm sau camera 0.1024m, cao hơn 0.0505m
   ══════════════════════════════════════════ -->
   <link name="camera_link">
     <inertial>
@@ -247,7 +237,7 @@
     <child link="camera_link"/>
   </joint>
 
-  <!-- Camera optical frame: z=forward, x=right, y=down (ROS convention) -->
+  <!-- Camera optical frame -->
   <link name="camera_optical_link"/>
   <joint name="camera_optical_joint" type="fixed">
     <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
@@ -259,9 +249,7 @@
        GAZEBO PLUGINS
   ══════════════════════════════════════════ -->
 
-  <!-- ── 2D LaserScan → /scan (cho SLAM Toolbox) ─────────────
-       QUAN TRỌNG: Tách thành block riêng biệt với 3D sensor
-  ──────────────────────────────────────────────────────────── -->
+  <!-- ── 2D LaserScan → /scan ──────────────────────────────── -->
   <gazebo reference="lidar">
     <sensor type="ray" name="lidar_2d_sensor">
       <pose>0 0 0 0 0 0</pose>
@@ -282,8 +270,7 @@
           <resolution>0.015</resolution>
         </range>
       </ray>
-      <plugin name="gazebo_ros_lidar_2d"
-              filename="libgazebo_ros_ray_sensor.so">
+      <plugin name="gazebo_ros_lidar_2d" filename="libgazebo_ros_ray_sensor.so">
         <ros>
           <remapping>~/out:=scan</remapping>
         </ros>
@@ -293,10 +280,7 @@
     </sensor>
   </gazebo>
 
-  <!-- ── 3D PointCloud2 → /velodyne_points (cho Semantic Mapping)
-       QUAN TRỌNG: Phải là block <gazebo reference="lidar"> riêng biệt
-       Gazebo Classic không cho 2 sensors trong 1 block
-  ──────────────────────────────────────────────────────────── -->
+  <!-- ── 3D PointCloud2 → /velodyne_points ─────────────────── -->
   <gazebo reference="lidar">
     <sensor type="ray" name="lidar_3d_sensor">
       <pose>0 0 0 0 0 0</pose>
@@ -313,8 +297,8 @@
           <vertical>
             <samples>16</samples>
             <resolution>1</resolution>
-            <min_angle>-0.26180</min_angle>  <!-- -15 deg -->
-            <max_angle> 0.26180</max_angle>  <!-- +15 deg -->
+            <min_angle>-0.26180</min_angle>
+            <max_angle> 0.26180</max_angle>
           </vertical>
         </scan>
         <range>
@@ -328,8 +312,7 @@
           <stddev>0.008</stddev>
         </noise>
       </ray>
-      <plugin name="gazebo_ros_vlp16"
-              filename="libgazebo_ros_ray_sensor.so">
+      <plugin name="gazebo_ros_vlp16" filename="libgazebo_ros_ray_sensor.so">
         <ros>
           <remapping>~/out:=/velodyne_points</remapping>
         </ros>
@@ -415,7 +398,7 @@
       <update_rate>30</update_rate>
       <visualize>true</visualize>
       <camera name="rgb_camera">
-        <horizontal_fov>1.3962634</horizontal_fov>  <!-- 80 degrees -->
+        <horizontal_fov>1.3962634</horizontal_fov>
         <image>
           <width>640</width>
           <height>480</height>
@@ -437,6 +420,43 @@
         <camera_name>rgb_camera</camera_name>
         <frame_name>camera_optical_link</frame_name>
         <hack_baseline>0.0</hack_baseline>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ── Depth Camera → /camera/depth/image_raw ─────────────── -->
+  <!-- Dùng libgazebo_ros_openni_kinect.so — plugin depth ổn định
+       nhất trong Gazebo Classic (không gây segfault như
+       libgazebo_ros_depth_camera.so hoặc libgazebo_ros_camera.so
+       với sensor type=depth) -->
+  <gazebo reference="camera_link">
+    <sensor type="depth" name="depth_camera">
+      <update_rate>30</update_rate>
+      <visualize>false</visualize>
+      <camera name="depth_camera">
+        <horizontal_fov>1.3962634</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>10.0</far>
+        </clip>
+      </camera>
+      <plugin name="depth_camera_controller"
+              filename="libgazebo_ros_openni_kinect.so">
+        <ros>
+          <namespace>/</namespace>
+          <remapping>image_raw:=camera/color/image_raw</remapping>
+          <remapping>image_depth:=camera/depth/image_raw</remapping>
+          <remapping>camera_info:=camera/color/camera_info</remapping>
+          <remapping>camera_info_depth:=camera/depth/camera_info</remapping>
+          <remapping>points:=camera/depth/points</remapping>
+        </ros>
+        <camera_name>depth_camera</camera_name>
+        <frame_name>camera_optical_link</frame_name>
       </plugin>
     </sensor>
   </gazebo>
