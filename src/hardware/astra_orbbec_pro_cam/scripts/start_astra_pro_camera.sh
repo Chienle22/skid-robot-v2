@@ -49,7 +49,7 @@ ros2 component standalone astra_camera astra_camera::OBCameraNodeFactory \
     -p depth_height:=480 \
     -p depth_fps:=30 \
     -p enable_depth:=true \
-    -p depth_align:=false \
+    -p depth_align:=true \
     -p serial_number:="" \
     -p number_of_devices:=1 \
     -p depth_scale:=1 \

@@ -284,7 +284,7 @@
       friction="0.05" />
   </joint>
   <link
-    name="lidar">
+    name="velodyne">
     <inertial>
       <origin
         xyz="-0.00010213 3.2869E-06 -0.036403"
@@ -305,7 +305,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://simulation/meshes/visual/lidar.STL" />
+          filename="package://simulation/meshes/visual/velodyne.STL" />
       </geometry>
       <material
         name="">
@@ -319,12 +319,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://simulation/meshes/visual/lidar.STL" />
+          filename="package://simulation/meshes/visual/velodyne.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="lidar_jt"
+    name="velodyne_jt"
     type="fixed">
     <origin
       xyz="0.1976 0.0041424 0.4005"
@@ -332,12 +332,12 @@
     <parent
       link="base_link" />
     <child
-      link="lidar" />
+      link="velodyne" />
     <axis
       xyz="0 0 0" />
   </joint>
   <link
-    name="imu">
+    name="imu_link">
     <inertial>
       <origin
         xyz="0.0012583 9.2935E-06 -0.0061404"
@@ -358,7 +358,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://simulation/meshes/visual/imu.STL" />
+          filename="package://simulation/meshes/visual/imu_link.STL" />
       </geometry>
       <material
         name="">
@@ -372,12 +372,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://simulation/meshes/visual/imu.STL" />
+          filename="package://simulation/meshes/visual/imu_link.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="imu_jt"
+    name="imu_link_jt"
     type="fixed">
     <origin
       xyz="0.186696441224005 0.00158367124236836 0.2805"
@@ -385,13 +385,13 @@
     <parent
       link="base_link" />
     <child
-      link="imu" />
+      link="imu_link" />
     <axis
       xyz="0 0 0" />
   </joint>
   
- <gazebo reference="lidar">
-    <sensor type="ray" name="lidar_sensor">
+ <gazebo reference="velodyne">
+    <sensor type="ray" name="velodyne_sensor">
       <pose>0 0 0 0 0 0</pose>
       <visualize>true</visualize> 
       <update_rate>10</update_rate>
@@ -410,12 +410,12 @@
           <resolution>0.015</resolution>
         </range>
       </ray>
-      <plugin name="gazebo_ros_lidar_controller" filename="libgazebo_ros_ray_sensor.so">
+      <plugin name="gazebo_ros_velodyne_controller" filename="libgazebo_ros_ray_sensor.so">
         <ros>
           <remapping>~/out:=scan</remapping>
         </ros>
         <output_type>sensor_msgs/LaserScan</output_type>
-        <frame_name>lidar</frame_name>
+        <frame_name>velodyne</frame_name>
       </plugin>
     </sensor>
   </gazebo>
@@ -464,13 +464,13 @@
     </plugin>
   </gazebo>
   
-  <gazebo reference="imu">
+  <gazebo reference="imu_link">
     <gravity>true</gravity>
-    <sensor name="imu_sensor" type="imu">
+    <sensor name="imu_link_sensor" type="imu_link">
       <always_on>true</always_on>
       <update_rate>200</update_rate> 
       <visualize>false</visualize>
-      <imu>
+      <imu_link>
         <angular_velocity>
           <x><noise type="gaussian"><mean>0.0</mean><stddev>2e-4</stddev></noise></x>
           <y><noise type="gaussian"><mean>0.0</mean><stddev>2e-4</stddev></noise></y>
@@ -481,13 +481,13 @@
           <y><noise type="gaussian"><mean>0.0</mean><stddev>1.7e-2</stddev></noise></y>
           <z><noise type="gaussian"><mean>0.0</mean><stddev>1.7e-2</stddev></noise></z>
         </linear_acceleration>
-      </imu>
-      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+      </imu_link>
+      <plugin name="imu_link_plugin" filename="libgazebo_ros_imu_link_sensor.so">
         <ros>
           <namespace>/</namespace>
-          <remapping>~/out:=/imu/data</remapping>
+          <remapping>~/out:=/imu_link/data</remapping>
         </ros>
-        <frame_name>imu</frame_name>
+        <frame_name>imu_link</frame_name>
       </plugin>
     </sensor>
   </gazebo>
